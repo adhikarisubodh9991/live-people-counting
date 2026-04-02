@@ -1,11 +1,12 @@
-# add tracking + in/out counter with fixed door line
+# interactive setup + counting app
 
-import time
 import cv2
+import time
 
 from config import DetectionConfig
 from detector import PersonDetector
 from tracker import PersonTracker
+from setup_flow import CameraSetup, DoorLineSetup
 
 
 def scale_dets(dets, scale):
@@ -22,33 +23,59 @@ def scale_dets(dets, scale):
     return out
 
 
+def draw(frame, dets, tracker, p1, p2, fps):
+    cv2.line(frame, p1, p2, (0, 255, 0), 3)
+
+    for d in dets:
+        x1, y1, x2, y2 = d["box"]
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (20, 220, 20), 2)
+
+    cv2.rectangle(frame, (0, 0), (300, 130), (0, 0, 0), -1)
+    cv2.putText(frame, f"FPS: {fps}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+    cv2.putText(frame, f"IN: {tracker.people_in}", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+    cv2.putText(frame, f"OUT: {tracker.people_out}", (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+
 def main():
+    setup = CameraSetup()
+    while not setup.show_menu():
+        pass
+
+    if not setup.test_camera():
+        print("camera test failed")
+        return
+
+    line_setup = DoorLineSetup(setup.config)
+    if not line_setup.show_line_selector():
+        print("line not set")
+        return
+
     cfg = DetectionConfig()
-
-    cam_index_raw = input("Webcam index (default 0): ").strip()
-    cam_index = int(cam_index_raw) if cam_index_raw else 0
-
-    cap = cv2.VideoCapture(cam_index)
-    if not cap.isOpened():
-        print("could not open camera")
-        return
-
-    ok, warm = cap.read()
-    if not ok:
-        print("camera read failed")
-        return
-
-    h, w = warm.shape[:2]
-    line_y = h // 2
-
     detector = PersonDetector(model_size=cfg.model_size)
-    tracker = PersonTracker(door_line_y=line_y)
+    tracker = PersonTracker(
+        door_line_y=setup.config.door_line_y,
+        door_line_start=setup.config.door_line_start,
+        door_line_end=setup.config.door_line_end,
+    )
+
+    if setup.config.camera_type == "webcam":
+        cap = cv2.VideoCapture(setup.config.camera_index)
+    else:
+        cap = cv2.VideoCapture(setup.config.camera_url)
+
+    if not cap.isOpened():
+        print("failed to open camera")
+        return
 
     fps_tick = time.time()
     fps_cnt = 0
     fps = 0
 
-    print("tracking enabled. press ESC to quit")
+    cv2.namedWindow("People Counter", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("People Counter", 1000, 650)
+
+    p1 = setup.config.door_line_start
+    p2 = setup.config.door_line_end
 
     while True:
         ok, frame = cap.read()
@@ -65,22 +92,13 @@ def main():
         for e in events:
             print(f"person {e['id']} -> {e['direction']}")
 
-        cv2.line(frame, (0, line_y), (w, line_y), (0, 255, 255), 2)
-
-        for d in dets:
-            x1, y1, x2, y2 = d["box"]
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (30, 220, 30), 2)
-
         if time.time() - fps_tick >= 1:
             fps = fps_cnt
             fps_cnt = 0
             fps_tick = time.time()
 
-        cv2.putText(frame, f"FPS: {fps}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-        cv2.putText(frame, f"IN: {tracker.people_in}", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-        cv2.putText(frame, f"OUT: {tracker.people_out}", (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-
-        cv2.imshow("People Counter - Tracking", frame)
+        draw(frame, dets, tracker, p1, p2, fps)
+        cv2.imshow("People Counter", frame)
 
         if (cv2.waitKey(1) & 0xFF) == 27:
             break

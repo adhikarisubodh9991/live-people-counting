@@ -1,4 +1,4 @@
-# simple nearest-neighbor tracker and line crossing counter
+# tracker
 
 import time
 
@@ -25,21 +25,37 @@ class Person:
     def age(self):
         self.missed += 1
 
+    def is_old(self, max_age=20):
+        return self.missed > max_age
+
 
 class PersonTracker:
-    def __init__(self, door_line_y):
+    def __init__(self, door_line_y, door_line_start=None, door_line_end=None):
         self.door_line_y = int(door_line_y)
+        self.door_line_start = door_line_start
+        self.door_line_end = door_line_end
+
+        if self.door_line_start is None or self.door_line_end is None:
+            self.door_line_start = (0, self.door_line_y)
+            self.door_line_end = (1, self.door_line_y)
+
         self.people = {}
         self.next_id = 1
         self.people_in = 0
         self.people_out = 0
 
+    def _side(self, x, y):
+        x1, y1 = self.door_line_start
+        x2, y2 = self.door_line_end
+        return (x2 - x1) * (y - y1) - (y2 - y1) * (x - x1)
+
     def update(self, detections):
         events = []
         used = set()
+        threshold = 5
 
-        for det in detections:
-            cx, cy = det["center"]
+        for d in detections:
+            cx, cy = d["center"]
 
             best_id = None
             best_dist = 10 ** 9
@@ -64,18 +80,24 @@ class PersonTracker:
 
         for pid, p in list(self.people.items()):
             if not p.counted:
-                if p.prev_y < self.door_line_y <= p.y:
+                prev_side = self._side(p.prev_x, p.prev_y)
+                cur_side = self._side(p.x, p.y)
+
+                if abs(prev_side) <= threshold and abs(cur_side) <= threshold:
+                    continue
+
+                if prev_side < -threshold and cur_side >= threshold:
                     p.counted = True
                     self.people_in += 1
                     events.append({"id": pid, "direction": "IN"})
-                elif p.prev_y > self.door_line_y >= p.y:
+                elif prev_side > threshold and cur_side <= -threshold:
                     p.counted = True
                     self.people_out += 1
                     events.append({"id": pid, "direction": "OUT"})
 
             if pid not in used:
                 p.age()
-                if p.missed > 20:
+                if p.is_old():
                     del self.people[pid]
 
         return events

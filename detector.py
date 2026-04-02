@@ -1,4 +1,4 @@
-# yolo detector wrapper
+# detector
 
 from ultralytics import YOLO
 
@@ -17,10 +17,12 @@ class PersonDetector:
                     continue
 
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
-                out.append({
-                    "box": (x1, y1, x2, y2),
-                    "confidence": float(box.conf[0]),
-                    "center": ((x1 + x2) // 2, (y1 + y2) // 2),
-                })
+                out.append(
+                    {
+                        "box": (x1, y1, x2, y2),
+                        "confidence": float(box.conf[0]),
+                        "center": ((x1 + x2) // 2, (y1 + y2) // 2),
+                    }
+                )
 
         return out
