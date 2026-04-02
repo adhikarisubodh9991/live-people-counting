@@ -30,10 +30,11 @@ def draw(frame, dets, tracker, p1, p2, fps):
         x1, y1, x2, y2 = d["box"]
         cv2.rectangle(frame, (x1, y1), (x2, y2), (20, 220, 20), 2)
 
-    cv2.rectangle(frame, (0, 0), (300, 130), (0, 0, 0), -1)
+    cv2.rectangle(frame, (0, 0), (320, 160), (0, 0, 0), -1)
     cv2.putText(frame, f"FPS: {fps}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
     cv2.putText(frame, f"IN: {tracker.people_in}", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
     cv2.putText(frame, f"OUT: {tracker.people_out}", (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+    cv2.putText(frame, f"ACTIVE: {len(tracker.get_active_persons())}", (10, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
 
 def main():
@@ -90,7 +91,8 @@ def main():
 
         events = tracker.update(dets)
         for e in events:
-            print(f"person {e['id']} -> {e['direction']}")
+            now = time.strftime("%H:%M:%S")
+            print(f"[{now}] person {e['id']} -> {e['direction']}")
 
         if time.time() - fps_tick >= 1:
             fps = fps_cnt

@@ -101,3 +101,10 @@ class PersonTracker:
                     del self.people[pid]
 
         return events
+
+    def get_active_persons(self):
+        return self.people
+
+    def reset_counts(self):
+        self.people_in = 0
+        self.people_out = 0
