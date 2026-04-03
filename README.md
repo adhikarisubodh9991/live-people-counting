@@ -48,14 +48,13 @@ python main.py
 
 ## 🎬 Demo Video
 
-<video controls width="900" src="https://raw.githubusercontent.com/adhikarisubodh9991/live-people-counting/main/output.mp4">
+<video controls width="900" src="https://res.cloudinary.com/dfze5p8dn/video/upload/v1775212593/output_alfqfk.mp4">
    Your browser does not support embedded video.
 </video>
 
 Fallback links:
 
-- [Open output.mp4 (repo file view)](output.mp4)
-- [Open output.mp4 (raw URL)](https://raw.githubusercontent.com/adhikarisubodh9991/live-people-counting/main/output.mp4)
+- [Open demo video](https://res.cloudinary.com/dfze5p8dn/video/upload/v1775212593/output_alfqfk.mp4)
 
 ### Setup Wizard
 
@@ -85,7 +84,6 @@ Fallback links:
 ├── detector.py       # YOLOv11 wrapper (custom backend + fallback)
 ├── tracker.py        # Person tracking and line crossing
 ├── setup_flow.py     # Setup wizard flow (prompt + line drawing)
-├── output.mp4        # Recorded demo output video
 ├── requirements.txt  # Python dependencies
 ├── README.md         # This file
 └── LICENSE           # MIT License
