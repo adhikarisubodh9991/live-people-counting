@@ -48,11 +48,14 @@ python main.py
 
 ## 🎬 Demo Video
 
-See the recorded output here:
+<video controls width="900" src="https://raw.githubusercontent.com/adhikarisubodh9991/live-people-counting/main/output.mp4">
+   Your browser does not support embedded video.
+</video>
 
-- [output.mp4](output.mp4)
+Fallback links:
 
-If GitHub does not inline-play in your view, click the link to open/download the video.
+- [Open output.mp4 (repo file view)](output.mp4)
+- [Open output.mp4 (raw URL)](https://raw.githubusercontent.com/adhikarisubodh9991/live-people-counting/main/output.mp4)
 
 ### Setup Wizard
 
