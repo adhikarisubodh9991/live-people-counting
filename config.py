@@ -34,3 +34,5 @@ class DetectionConfig:
         self.confidence_threshold = 0.45
         self.resize_scale = 0.5
         self.model_size = "n"
+        self.frame_skip = 2
+        self.target_fps = 20

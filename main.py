@@ -30,11 +30,10 @@ def draw(frame, dets, tracker, p1, p2, fps):
         x1, y1, x2, y2 = d["box"]
         cv2.rectangle(frame, (x1, y1), (x2, y2), (20, 220, 20), 2)
 
-    cv2.rectangle(frame, (0, 0), (320, 160), (0, 0, 0), -1)
+    cv2.rectangle(frame, (0, 0), (300, 130), (0, 0, 0), -1)
     cv2.putText(frame, f"FPS: {fps}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
     cv2.putText(frame, f"IN: {tracker.people_in}", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
     cv2.putText(frame, f"OUT: {tracker.people_out}", (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-    cv2.putText(frame, f"ACTIVE: {len(tracker.get_active_persons())}", (10, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
 
 def main():
@@ -68,9 +67,14 @@ def main():
         print("failed to open camera")
         return
 
+    cap.set(cv2.CAP_PROP_FPS, cfg.target_fps)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
     fps_tick = time.time()
     fps_cnt = 0
     fps = 0
+    frame_i = 0
+    dets = []
 
     cv2.namedWindow("People Counter", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("People Counter", 1000, 650)
@@ -84,15 +88,16 @@ def main():
             break
 
         fps_cnt += 1
+        frame_i += 1
 
-        small = cv2.resize(frame, (0, 0), fx=cfg.resize_scale, fy=cfg.resize_scale)
-        dets_small = detector.detect(small, conf=cfg.confidence_threshold)
-        dets = scale_dets(dets_small, cfg.resize_scale)
+        if frame_i % cfg.frame_skip == 0:
+            small = cv2.resize(frame, (0, 0), fx=cfg.resize_scale, fy=cfg.resize_scale)
+            dets_small = detector.detect(small, conf=cfg.confidence_threshold)
+            dets = scale_dets(dets_small, cfg.resize_scale)
 
         events = tracker.update(dets)
         for e in events:
-            now = time.strftime("%H:%M:%S")
-            print(f"[{now}] person {e['id']} -> {e['direction']}")
+            print(f"person {e['id']} -> {e['direction']}")
 
         if time.time() - fps_tick >= 1:
             fps = fps_cnt
