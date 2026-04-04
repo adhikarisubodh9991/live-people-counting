@@ -228,6 +228,10 @@ Contributions welcome! To improve:
 4. Push: `git push origin feature/improvement`
 5. Open Pull Request
 
+## AI Usage Declaration
+
+I have used GitHub Copilot for basic debugging and error solving.
+
 ## 📄 License
 
 MIT License - See [LICENSE](LICENSE) for details
