@@ -5,12 +5,6 @@ import numpy as np
 import os
 from pathlib import Path
 import sys
-from ultralytics import YOLO
-
-try:
-    import torch
-except Exception:
-    torch = None
 
 
 class PersonDetector:
@@ -26,8 +20,15 @@ class PersonDetector:
         self.backend_name = 'ultralytics-yolo11'
         self.backend_detail = ''
         self.fallback_reason = None
+        self._torch = None
 
-        if torch is not None and torch.cuda.is_available():
+        try:
+            import torch
+            self._torch = torch
+        except Exception:
+            self._torch = None
+
+        if self._torch is not None and self._torch.cuda.is_available():
             self.device = 'cuda:0'
 
         if prefer_custom_yolov11:
@@ -38,6 +39,7 @@ class PersonDetector:
             self.fallback_reason = 'custom YOLOv11 backend disabled in config'
 
         if self.custom_predictor is None:
+            from ultralytics import YOLO
             # fallback path: use official Ultralytics YOLO11 weights
             self.model = YOLO(f'yolo11{model_size}.pt')
             self.model.to(self.device)

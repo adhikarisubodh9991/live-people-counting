@@ -6,7 +6,6 @@ import logging
 import numpy as np
 from collections import deque
 from config import CameraConfig, DetectionConfig
-from detector import PersonDetector
 from tracker import PersonTracker
 from setup_flow import CameraSetup, DoorLineSetup
 
@@ -31,6 +30,7 @@ class PeopleCounter:
         self._fps_smooth = 0.0
         self._low_light_boost = True
         self._bg_subtractor = cv2.createBackgroundSubtractorMOG2(history=300, varThreshold=22, detectShadows=True)
+        self._bootstrap_frame = None
         
     def setup(self):
         # ask user for camera + door line
@@ -63,6 +63,9 @@ class PeopleCounter:
     
     def initialize(self):
         # init detector/tracker and open camera
+        # Import detector lazily so startup UI opens without waiting for ML stacks.
+        from detector import PersonDetector
+
         # Enable OpenCV optimizations for better FPS.
         cv2.setUseOptimized(True)
         try:
@@ -82,16 +85,6 @@ class PeopleCounter:
             logger.info(f"Backend detail: {self.detector.backend_detail}")
         if self.detector.fallback_reason:
             logger.warning(f"Custom backend unavailable: {self.detector.fallback_reason}")
-        
-        # Initialize the person tracker
-        self.tracker = PersonTracker(
-            door_line_y=self.cam_cfg.door_line_y,
-            zone_top=150,
-            zone_bottom=150,
-            door_line_start=self.cam_cfg.door_line_start,
-            door_line_end=self.cam_cfg.door_line_end,
-            in_side_sign=self.cam_cfg.in_side_sign
-        )
         
         # Open the camera
         if self.cam_cfg.camera_type == 'webcam':
@@ -113,6 +106,26 @@ class PeopleCounter:
         if self.cam_cfg.camera_type == 'webcam':
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 960)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 540)
+
+        # Read one frame to lock runtime dimensions and scale setup line reliably.
+        got_frame, first_frame = self.cap.read()
+        if not got_frame:
+            logger.error("Could not read initial frame from camera")
+            return False
+        self._bootstrap_frame = first_frame
+
+        fh, fw = first_frame.shape[:2]
+        line_p1, line_p2, line_y = self.cam_cfg.get_scaled_door_line(fw, fh)
+
+        # Initialize tracker with runtime-scaled line coordinates.
+        self.tracker = PersonTracker(
+            door_line_y=line_y,
+            zone_top=150,
+            zone_bottom=150,
+            door_line_start=line_p1,
+            door_line_end=line_p2,
+            in_side_sign=self.cam_cfg.in_side_sign
+        )
         
         return True
     
@@ -137,7 +150,12 @@ class PeopleCounter:
         
         # Main loop
         while self.running:
-            ret, frame = self.cap.read()
+            if self._bootstrap_frame is not None:
+                frame = self._bootstrap_frame
+                self._bootstrap_frame = None
+                ret = True
+            else:
+                ret, frame = self.cap.read()
             if not ret:
                 logger.warning("Camera lost")
                 break
@@ -219,13 +237,8 @@ class PeopleCounter:
         # draw line + boxes
         h, w = frame.shape[:2]
 
-        # Draw the door line
-        if self.cam_cfg.door_line_start and self.cam_cfg.door_line_end:
-            p1, p2 = self.cam_cfg.door_line_start, self.cam_cfg.door_line_end
-        else:
-            # Horizontal line if no specific start/end points
-            p1 = (0, self.cam_cfg.door_line_y)
-            p2 = (w, self.cam_cfg.door_line_y)
+        # Draw door line scaled for the current frame size.
+        p1, p2, _line_y = self.cam_cfg.get_scaled_door_line(w, h)
 
         # Draw line in two colors for better visibility
         cv2.line(frame, p1, p2, (0, 255, 0), 4, cv2.LINE_AA)  # Green thick line

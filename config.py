@@ -12,6 +12,9 @@ class CameraConfig:
         self.door_line_y = None  # Y coordinate of the door line
         self.door_line_start = None  # Start point of door line (x, y)
         self.door_line_end = None  # End point of door line (x, y)
+        self.door_line_start_norm = None  # Normalized start (x/w, y/h)
+        self.door_line_end_norm = None  # Normalized end (x/w, y/h)
+        self.door_line_ref_size = None  # (width, height) used during setup
         self.in_side_sign = 1  # Which side of the line means IN (+1 or -1)
         self.performance_mode = 'accurate'  # fixed: accurate only
         
@@ -34,7 +37,7 @@ class CameraConfig:
         self.video_path = path
         self.camera_url = None
         
-    def set_door_line(self, y=None, start_point=None, end_point=None):
+    def set_door_line(self, y=None, start_point=None, end_point=None, frame_size=None):
         # accepts either (start,end) or just y
         if start_point is not None and end_point is not None:
             # full custom line
@@ -42,11 +45,49 @@ class CameraConfig:
             self.door_line_end = (int(end_point[0]), int(end_point[1]))
             # Calculate midpoint Y
             self.door_line_y = (self.door_line_start[1] + self.door_line_end[1]) // 2
+
+            if frame_size is not None:
+                w = max(1, int(frame_size[0]))
+                h = max(1, int(frame_size[1]))
+                self.door_line_ref_size = (w, h)
+                self.door_line_start_norm = (self.door_line_start[0] / float(w), self.door_line_start[1] / float(h))
+                self.door_line_end_norm = (self.door_line_end[0] / float(w), self.door_line_end[1] / float(h))
         elif y is not None:
             # fallback horizontal line
             self.door_line_y = int(y)
             self.door_line_start = None
             self.door_line_end = None
+            self.door_line_start_norm = None
+            self.door_line_end_norm = None
+            self.door_line_ref_size = None
+
+    def get_scaled_door_line(self, frame_width, frame_height):
+        w = max(1, int(frame_width))
+        h = max(1, int(frame_height))
+
+        if self.door_line_start_norm is not None and self.door_line_end_norm is not None:
+            p1 = (
+                int(round(self.door_line_start_norm[0] * w)),
+                int(round(self.door_line_start_norm[1] * h)),
+            )
+            p2 = (
+                int(round(self.door_line_end_norm[0] * w)),
+                int(round(self.door_line_end_norm[1] * h)),
+            )
+            y = int((p1[1] + p2[1]) // 2)
+            return p1, p2, y
+
+        if self.door_line_start is not None and self.door_line_end is not None and self.door_line_ref_size is not None:
+            rw, rh = self.door_line_ref_size
+            sx = w / float(max(1, rw))
+            sy = h / float(max(1, rh))
+            p1 = (int(round(self.door_line_start[0] * sx)), int(round(self.door_line_start[1] * sy)))
+            p2 = (int(round(self.door_line_end[0] * sx)), int(round(self.door_line_end[1] * sy)))
+            y = int((p1[1] + p2[1]) // 2)
+            return p1, p2, y
+
+        y = int(self.door_line_y or (h // 2))
+        return (0, y), (w, y), y
 
     def set_in_side_sign(self, sign):
         # sign should be +1 or -1

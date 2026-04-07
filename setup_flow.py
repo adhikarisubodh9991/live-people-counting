@@ -93,6 +93,10 @@ class CameraSetup:
         else:
             cap = cv2.VideoCapture(self.config.camera_url)
 
+        if self.config.camera_type == 'webcam':
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 960)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 540)
+
         if not cap.isOpened():
             print("Failed to open camera!")
             return False
@@ -120,6 +124,10 @@ class DoorLineSetup:
             self.cap = cv2.VideoCapture(self.config.video_path)
         else:
             self.cap = cv2.VideoCapture(self.config.camera_url)
+
+        if self.config.camera_type == 'webcam':
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 960)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 540)
 
         # keep stream low-latency
         self.cap.set(cv2.CAP_PROP_FPS, 20)
@@ -241,9 +249,11 @@ class DoorLineSetup:
 
                     confirmed = (p1, p2)
                     center_y = (p1[1] + p2[1]) // 2
-                    self.config.set_door_line(start_point=p1, end_point=p2)
+                    fh, fw = frame.shape[:2]
+                    self.config.set_door_line(start_point=p1, end_point=p2, frame_size=(fw, fh))
                     self.config.set_in_side_sign(in_side_sign)
                     print(f"[debug] line: {p1} -> {p2}")
+                    print(f"[debug] line reference size: {fw}x{fh}")
                     print(f"[debug] in_side_sign: {in_side_sign}")
                     print(f"✓ Door line CONFIRMED (center Y={center_y})")
                     cv2.destroyAllWindows()
